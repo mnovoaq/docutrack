@@ -41,9 +41,10 @@ class DocuTrackServer {
     if (p === '/api/openapi')    return this.serveOpenAPI(res)
     if (p === '/api/check')      return this.serveCheck(res)
     if (p === '/api/complexity') return this.serveComplexity(res)
-    if (p === '/api/scan' && req.method === 'POST')     return this.serveScan(res)
-    if (p === '/api/generate' && req.method === 'POST') return this.serveGenerate(res, req)
-    if (p === '/events')                                return this.serveSSE(req, res)
+    if (p === '/api/scan' && req.method === 'POST')          return this.serveScan(res)
+    if (p === '/api/generate' && req.method === 'POST')      return this.serveGenerate(res, req)
+    if (p === '/api/generate-arch' && req.method === 'POST') return this.serveGenerateArch(res, req)
+    if (p === '/events')                                     return this.serveSSE(req, res)
 
     res.writeHead(404, { 'Content-Type': 'text/plain' })
     res.end('Not found')
@@ -432,6 +433,89 @@ Keep it concise. Skip sections that don't apply.`
       }
     }
     return null
+  }
+
+  serveGenerateArch(res, req) {
+    const apiKey = this.readApiKey()
+    if (!apiKey) {
+      res.writeHead(400, { 'Content-Type': 'application/json' })
+      return res.end(JSON.stringify({ error: 'no_api_key' }))
+    }
+
+    let body = ''
+    req.on('data', chunk => { body += chunk })
+    req.on('end', async () => {
+      let opts = {}
+      try { opts = JSON.parse(body) } catch { /* ok */ }
+      const lang = opts.lang || 'es'
+
+      // Gather project context
+      let pkg = {}
+      try { pkg = JSON.parse(fs.readFileSync(path.join(this.root, 'package.json'), 'utf8')) } catch { /* ok */ }
+
+      const files = this.scanSourceFiles().slice(0, 80)
+      const fileTree = files.join('\n')
+
+      // Read a few key files for context
+      const contextFiles = []
+      for (const f of files.slice(0, 6)) {
+        try {
+          const content = fs.readFileSync(path.join(this.root, f), 'utf8').slice(0, 1500)
+          contextFiles.push(`### ${f}\n\`\`\`\n${content}\n\`\`\``)
+        } catch { /* ok */ }
+      }
+
+      // Read existing ARCHITECTURE.md (the template)
+      let existingArch = ''
+      try { existingArch = fs.readFileSync(path.join(this.root, 'ARCHITECTURE.md'), 'utf8') } catch { /* ok */ }
+
+      const langInstruction = lang === 'es'
+        ? 'Escribe toda la documentación en español. Los títulos de sección también en español.'
+        : 'Write all documentation in English.'
+
+      const system = `You are a senior software architect writing project documentation.
+Output ONLY the markdown document. No preamble, no explanation.
+${langInstruction}`
+
+      const user = `Fill in this ARCHITECTURE.md for a real project. Replace ALL placeholder content with real information derived from the project files below.
+
+Package.json:
+\`\`\`json
+${JSON.stringify({ name: pkg.name, description: pkg.description, dependencies: pkg.dependencies, devDependencies: pkg.devDependencies }, null, 2).slice(0, 2000)}
+\`\`\`
+
+Source file list (${files.length} files):
+\`\`\`
+${fileTree}
+\`\`\`
+
+Sample source files:
+${contextFiles.join('\n\n')}
+
+Current ARCHITECTURE.md template to fill in:
+${existingArch}
+
+Instructions:
+- Fill every empty table cell and placeholder comment with real content derived from the project
+- For the Tech Stack table: detect framework, styling, auth, database, ORM from package.json dependencies
+- For Module Map: list the most important modules from the file list with their actual responsibilities
+- For App Structure: show the real directory tree
+- For Data Flow: describe the actual flow based on the code
+- Keep the same markdown structure and headers
+- Remove placeholder comments like <!-- Describe... -->
+- If a section truly doesn't apply, write "N/A" rather than leaving it blank`
+
+      try {
+        const arch = await this.callClaude(apiKey, system, user)
+        fs.writeFileSync(path.join(this.root, 'ARCHITECTURE.md'), arch)
+        this.broadcast('reload')
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ ok: true }))
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: err.message }))
+      }
+    })
   }
 
   scanSourceFiles() {

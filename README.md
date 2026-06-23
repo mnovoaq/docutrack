@@ -50,20 +50,41 @@ DocuTrack installs two hooks in your Claude Code settings:
 
 ---
 
+## Two flows
+
+### New project
+```
+npx docutrack init          # installs hooks
+# → work with Claude Code normally
+# → at end of each session, docs are written automatically
+docutrack serve             # view docs at localhost:4242
+```
+
+### Existing codebase
+```
+npx docutrack init          # installs hooks
+docutrack serve             # open viewer
+# → click "Scan project files" in the Bootstrap panel
+# → click "Generate docs with AI"
+# → docs for every source file appear in real-time
+```
+
+No terminal commands needed after `init` — the web UI handles scanning and generation.
+
+---
+
 ## Web viewer
 
-Run `docutrack serve` to open a Notion-like documentation viewer at `http://localhost:4242`:
+Run `docutrack serve` to open a documentation viewer at `http://localhost:4242`:
 
 - **Modules** — auto-generated docs for every source file
 - **Architecture** — AI-generated overview of your tech stack, structure, and data flow
 - **API Explorer** — interactive Swagger-like explorer built from your route files
 - **Decisions** — Architecture Decision Records (ADRs)
 - **Health Check** — drift analysis, complexity heatmap, stale doc detection
+- **Command palette** — `Cmd/Ctrl+K` to jump to any doc or search content
 - **Multilingual** — generates docs in Spanish or English, switchable from the UI
-
-### Bootstrapping an existing project
-
-Already have a codebase? No problem. Open the viewer and click **"✨ Regenerate docs"** — DocuTrack scans all your source files and generates documentation for everything, no terminal needed.
+- **Persistent URLs** — each view has its own hash URL; reload lands on the same page
 
 ---
 

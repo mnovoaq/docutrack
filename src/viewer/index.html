@@ -451,15 +451,18 @@ marked.use({
   gfm: true,
   renderer: {
     code({ text, lang }) {
+      const t = text || ''
       if (lang === 'mermaid') {
-        return `<div class="mermaid-wrap"><div class="mermaid">${esc(text)}</div></div>`
+        return `<div class="mermaid-wrap"><div class="mermaid">${esc(t)}</div></div>`
       }
-      return `<div class="code-block-wrap"><pre><code class="language-${esc(lang||'')}">${esc(text)}</code></pre><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>`
+      if (!t.trim()) return `<pre><code class="language-${esc(lang||'')}"></code></pre>`
+      return `<div class="code-block-wrap"><pre><code class="language-${esc(lang||'')}">${esc(t)}</code></pre><button class="copy-btn" onclick="copyCode(this)">Copy</button></div>`
     },
     heading({ text, depth }) {
-      if (depth === 1) return `<h1>${text}</h1>\n`
-      const anchor = text.replace(/<[^>]+>/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-      return `<h${depth} id="${anchor}">${text}<a class="heading-anchor" href="#${anchor}" onclick="copyAnchor(this,event)">#</a></h${depth}>\n`
+      const t = text || ''
+      if (depth === 1) return `<h1>${t}</h1>\n`
+      const anchor = t.replace(/<[^>]+>/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || `h${depth}`
+      return `<h${depth} id="${anchor}">${t}<a class="heading-anchor" href="#${anchor}" onclick="copyAnchor(this,event)">#</a></h${depth}>\n`
     }
   }
 })
@@ -468,9 +471,17 @@ mermaid.initialize({ startOnLoad: false, theme: 'neutral', securityLevel: 'loose
 // ── Boot ──────────────────────────────────────────────────────────────────
 async function boot() {
   setTheme(localStorage.getItem('dt-theme') || 'light')
+
+  // Pre-set state.active so refreshTree() skips its default auto-navigation
+  const _initHash = location.hash.slice(1)
+  if (_initHash) state.active = '__hash__'
+
   await refreshTree()
   await refreshStatus()
   connectSSE()
+
+  // Restore the view the user was on before reloading
+  if (_initHash) restoreFromHash(_initHash)
   document.getElementById('search').addEventListener('input', e => {
     state.query = e.target.value.trim()
     renderNav()
@@ -590,6 +601,7 @@ async function loadFile(filePath) {
   if (!filePath) return
   state.active = filePath
   state.view = 'docs'
+  setHash('doc/' + filePath)
   renderNav()
 
   const el = document.getElementById('doc-content')
@@ -903,6 +915,7 @@ function handleDoneEvent(raw) {
 
 function showRegenPanel() {
   state.active = 'regen'
+  setHash('regen')
   renderNav()
   const lang = state.lang || 'es'
   const el = document.getElementById('doc-content')
@@ -1003,6 +1016,7 @@ function goHome() {
 async function showApiExplorer() {
   state.active = 'api-explorer'
   state.view = 'api-explorer'
+  setHash('api-explorer')
   renderNav()
 
   const el = document.getElementById('doc-content')
@@ -1199,7 +1213,7 @@ function renderResponse(resp) {
       </div>
       <div class="response-body">${esc(body)}</div>
     </div>
-    ${resp.corsError ? `<div class="cors-warn">⚠ CORS error — the API server must allow requests from this origin. Add <code>Access-Control-Allow-Origin: *</code> to its headers, or run DocuTrack on the same port.</div>` : ''}`
+    ${resp.corsError ? `<div class="cors-warn">⚠ Could not reach <code>${esc(api.baseUrl)}</code> — either the server is not running, or it is blocking cross-origin requests. Start your app server and make sure it allows <code>Access-Control-Allow-Origin: *</code>.</div>` : ''}`
 }
 
 // ── Execute request ────────────────────────────────────────────────────────
@@ -1325,6 +1339,7 @@ async function refreshStatus() {
 async function showHealthCheck() {
   state.active = 'health-check'
   state.view = 'health-check'
+  setHash('health-check')
   renderNav()
 
   const el = document.getElementById('doc-content')
@@ -1470,6 +1485,19 @@ function setTheme(t) {
   document.getElementById('theme-toggle').textContent = t === 'dark' ? '☀️' : '🌙'
   localStorage.setItem('dt-theme', t)
   mermaid.initialize({ startOnLoad: false, theme: t === 'dark' ? 'dark' : 'neutral', securityLevel: 'loose' })
+}
+
+// ── Routing ───────────────────────────────────────────────────────────────
+function setHash(h) {
+  history.replaceState(null, '', '#' + h)
+}
+
+function restoreFromHash(h) {
+  if (h === 'api-explorer')  { showApiExplorer(); return }
+  if (h === 'health-check')  { showHealthCheck(); return }
+  if (h === 'regen')         { showRegenPanel(); return }
+  if (h.startsWith('doc/'))  { loadFile(h.slice(4)); return }
+  loadFile(h)
 }
 
 // ── Utils ──────────────────────────────────────────────────────────────────

@@ -6,6 +6,20 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.1.2] — 2026-06-23
+
+### Added
+- **Hash-based URL routing** — each view has its own URL; reload restores the same page
+- **Command palette** doc search via `/api/search`
+
+### Fixed
+- README clarifies new project vs existing project flows
+- Empty code blocks no longer show Copy button
+- Heading anchor renderer handles undefined text gracefully
+- API Explorer "Try it out" error message distinguishes server-down from CORS
+
+---
+
 ## [0.1.1] — 2026-06-23
 
 ### Added

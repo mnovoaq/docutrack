@@ -6,6 +6,16 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.1.4] — 2026-06-23
+
+### Changed
+- **No API key required** — removed all direct Anthropic API calls from the viewer
+- Bootstrap panel, Regenerate panel, and ARCHITECTURE.md banner now show a copyable command to paste in Claude Code instead of a "Generate with AI" button
+- `setLang()` toggle now updates command text in real-time across all panels
+- Server.js simplified: removed `serveGenerate`, `serveGenerateArch`, `runGeneration`, `generateDoc`, `callClaude`, `readApiKey`, `scanSourceFiles` — server went from 694 → 369 lines
+
+---
+
 ## [0.1.3] — 2026-06-23
 
 ### Fixed

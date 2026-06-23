@@ -6,6 +6,16 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.1.5] — 2026-06-23
+
+### Added
+- **`docutrack setup`** — one-command auto-setup: init (if needed) + scan existing files + optional server start (y/n prompt)
+- **Server daemonization** — `docutrack setup` starts the viewer as a background process with PID file tracking; port conflict detection prevents double-starts
+- **Auto-init at session start** — updated `claude-snippet.md`: Claude checks the queue on every session start and runs the documentalista automatically if files are pending
+- **Improved Stop hook** — now gives Claude a direct instruction to run the documentalista before closing the session, keeping docs in sync automatically
+
+---
+
 ## [0.1.4] — 2026-06-23
 
 ### Changed

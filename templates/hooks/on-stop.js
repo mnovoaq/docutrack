@@ -1,7 +1,7 @@
 'use strict'
 
 // Stop hook — fires when the Claude Code session ends
-// Warns if there are files modified without documentation updates
+// If files are pending documentation, asks Claude to run the documentalista
 
 const fs = require('fs')
 const path = require('path')
@@ -20,20 +20,24 @@ try {
 if (!queue.pending || queue.pending.length === 0) process.exit(0)
 
 const count = queue.pending.length
-const files = queue.pending.map(e => `  - ${e.file}`).join('\n')
+const shown = queue.pending.slice(0, 8)
+const files = shown.map(e => `  - ${e.file}`).join('\n')
+const overflow = count > 8 ? `\n  … and ${count - 8} more` : ''
 
 console.log(`
-╔════════════════════════════════════════════════════╗
-║  DocuTrack: ${String(count).padEnd(3)} file(s) need documentation     ║
-╚════════════════════════════════════════════════════╝
+╔══════════════════════════════════════════════════════════╗
+║  DocuTrack — ${String(count).padEnd(3)} file(s) pending documentation       ║
+╚══════════════════════════════════════════════════════════╝
 
-${files}
+${files}${overflow}
 
-To update the docs, tell the agent:
-  "Update the documentation for the files in .docutrack/queue.json"
+Please run the documentalista subagent to document these
+files before ending the session:
 
-To clear the queue manually:
-  npx docutrack clear
+  Task: "Run the documentalista to document all pending files"
+
+The documentalista reads .docutrack/queue.json, writes a doc
+for each pending file, and clears the queue automatically.
 `)
 
 process.exit(0)

@@ -6,6 +6,17 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.1.3] — 2026-06-23
+
+### Fixed
+- README: Stop hook never triggered docs automatically — corrected to "warns, then user tells Claude"
+- README: `npx docutrack init` → `docutrack serve` required global install — now explicit
+- README: `onboard` described as "AI-generated" — it assembles existing docs, no API call
+- README: `clear` command was missing from the commands table
+- README: added `--port`, `--json`, `--dry-run` flags and badge output path
+
+---
+
 ## [0.1.2] — 2026-06-23
 
 ### Added

@@ -430,10 +430,7 @@ const state = {
   view: 'docs',   // 'docs' | 'api-explorer' | 'health-check'
   staleSet: new Set(),
   healthBadge: 0,  // number of critical health issues
-  lang: 'es',     // 'es' | 'en' — language for AI doc generation
-  generating: false,
-  generationTotal: 0,
-  generationLog: [],  // { icon, color, file } — persisted to replay on panel re-enter
+  lang: 'es',     // 'es' | 'en' — language for docs generation
 }
 
 const api = {
@@ -615,14 +612,14 @@ async function loadFile(filePath) {
   document.getElementById('main').scrollTo({ top: 0 })
   await mermaid.run({ nodes: document.querySelectorAll('#doc-content .mermaid') })
 
-  // Show "Generate with AI" banner if ARCHITECTURE.md is still a template
   if (filePath === 'ARCHITECTURE.md' && isArchTemplate(text)) {
     const banner = document.createElement('div')
     banner.id = 'arch-gen-banner'
-    banner.style.cssText = 'position:sticky;bottom:0;background:var(--bg);border-top:1px solid var(--border);padding:14px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap'
+    banner.style.cssText = 'position:sticky;bottom:0;background:var(--bg);border-top:1px solid var(--border);padding:14px 24px'
     banner.innerHTML = `
-      <span style="font-size:13px;color:var(--text-muted);flex:1">La arquitectura tiene contenido de plantilla sin completar.</span>
-      <button id="arch-gen-btn" onclick="generateArch()" style="padding:8px 18px;background:var(--accent);color:white;border:none;border-radius:var(--radius);font-size:13px;font-weight:600;cursor:pointer">✨ Generar con IA</button>`
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px">La arquitectura tiene contenido de plantilla. Dile a Claude Code:</div>
+      <div class="bootstrap-claude-cmd" data-cmd-type="arch" onclick="copyGenCmd(this)" style="font-size:12px">${genCmdText('arch')}</div>
+      <p class="copy-hint" style="margin-top:6px">Clic para copiar</p>`
     document.getElementById('doc-wrap').appendChild(banner)
   }
 }
@@ -727,191 +724,39 @@ async function runScan() {
       <div class="bootstrap-result-title">✓ ${data.queued} files queued${data.skipped > 0 ? ` (${data.skipped} already queued)` : ''}</div>
       ${preview ? `<div class="bootstrap-result-files">${esc(preview)}</div>` : ''}
     </div>
-    <div id="step3-generate" style="margin-top:12px">
+    <div id="step3-generate" style="margin-top:16px">
       <div style="display:flex;justify-content:center;gap:0;margin-bottom:12px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;width:fit-content;margin-left:auto;margin-right:auto">
-        <button id="lang-es" onclick="setLang('es')" style="padding:6px 18px;border:none;background:var(--accent);color:white;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s">🇪🇸 Español</button>
-        <button id="lang-en" onclick="setLang('en')" style="padding:6px 18px;border:none;background:var(--bg-secondary);color:var(--text-muted);font-size:13px;cursor:pointer;transition:background .15s">🇺🇸 English</button>
+        <button id="lang-es" onclick="setLang('es')" style="padding:6px 18px;border:none;background:${state.lang==='es'?'var(--accent)':'var(--bg-sidebar)'};color:${state.lang==='es'?'white':'var(--text-muted)'};font-size:13px;font-weight:600;cursor:pointer;transition:background .15s">🇪🇸 Español</button>
+        <button id="lang-en" onclick="setLang('en')" style="padding:6px 18px;border:none;background:${state.lang==='en'?'var(--accent)':'var(--bg-sidebar)'};color:${state.lang==='en'?'white':'var(--text-muted)'};font-size:13px;cursor:pointer;transition:background .15s">🇺🇸 English</button>
       </div>
-      <button class="bootstrap-btn" id="gen-btn" onclick="runGenerate()">
-        <span id="gen-btn-icon">✨</span>
-        <span id="gen-btn-label">Generate docs with AI</span>
-      </button>
-      <p style="text-align:center;font-size:12px;color:var(--text-muted);margin-top:8px">
-        Uses Claude Haiku — reads each file and writes the docs automatically
-      </p>
+      <div class="bootstrap-claude">
+        <div class="bootstrap-claude-label">Pega esto en tu sesión de Claude Code</div>
+        <div class="bootstrap-claude-cmd" data-cmd-type="bootstrap" onclick="copyGenCmd(this)">${genCmdText('bootstrap')}</div>
+        <p class="copy-hint">Clic para copiar · el agente documentará cada archivo en tiempo real</p>
+      </div>
     </div>`
 
   // Refresh status badge
   await refreshStatus()
 }
 
-function confirmRegen() {
-  const total = state.generationTotal || '?'
-  const lang = state.lang === 'es' ? 'español' : 'inglés'
-  if (!confirm(`¿Regenerar toda la documentación en ${lang}?\n\nEsto sobreescribirá todos los archivos .md existentes.`)) return
-  runGenerate(true)
-}
-
 function setLang(lang) {
   state.lang = lang
   const es = document.getElementById('lang-es')
   const en = document.getElementById('lang-en')
-  if (!es || !en) return
-  if (lang === 'es') {
-    es.style.background = 'var(--accent)'; es.style.color = 'white'
-    en.style.background = 'var(--bg-secondary)'; en.style.color = 'var(--text-muted)'
-  } else {
-    en.style.background = 'var(--accent)'; en.style.color = 'white'
-    es.style.background = 'var(--bg-secondary)'; es.style.color = 'var(--text-muted)'
+  if (es && en) {
+    es.style.background = lang === 'es' ? 'var(--accent)' : 'var(--bg-sidebar)'
+    es.style.color = lang === 'es' ? 'white' : 'var(--text-muted)'
+    en.style.background = lang === 'en' ? 'var(--accent)' : 'var(--bg-sidebar)'
+    en.style.color = lang === 'en' ? 'white' : 'var(--text-muted)'
   }
+  document.querySelectorAll('[data-cmd-type]').forEach(el => {
+    el.textContent = genCmdText(el.dataset.cmdType)
+  })
 }
 
-async function runGenerate(force = false) {
-  const lang = state.lang || 'es'
-  const btn = document.getElementById('gen-btn')
-  if (!btn) return
-  btn.disabled = true
-  document.getElementById('gen-btn-icon').innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;border-color:rgba(255,255,255,.3);border-top-color:white;display:inline-block"></span>'
-  document.getElementById('gen-btn-label').textContent = 'Starting…'
 
-  let data
-  try {
-    const r = await fetch('/api/generate', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ lang, force }),
-    })
-    data = await r.json()
-  } catch (e) {
-    btn.disabled = false
-    document.getElementById('gen-btn-icon').textContent = '✨'
-    document.getElementById('gen-btn-label').textContent = 'Generate docs with AI'
-    return
-  }
 
-  if (data.error === 'no_api_key') {
-    btn.disabled = false
-    document.getElementById('gen-btn-icon').textContent = '✨'
-    document.getElementById('gen-btn-label').textContent = 'Generate docs with AI'
-    document.getElementById('step3-generate').innerHTML += `
-      <div style="margin-top:12px;padding:14px 16px;background:var(--yellow-bg);border:1px solid var(--yellow);border-radius:var(--radius);font-size:13px;color:var(--yellow-text)">
-        <strong>API key not found.</strong> Add to your shell or <code>.env.local</code>:<br>
-        <code style="display:block;margin-top:8px;font-size:12px;user-select:all">ANTHROPIC_API_KEY=sk-ant-...</code>
-        Then restart the server and try again.
-      </div>`
-    return
-  }
-
-  if (data.error) {
-    btn.disabled = false
-    document.getElementById('gen-btn-icon').textContent = '✨'
-    document.getElementById('gen-btn-label').textContent = 'Generate docs with AI'
-    return
-  }
-
-  // Generation started — swap UI to progress view
-  const total = data.total || 0
-  const stepAgent = document.getElementById('step-agent')
-  if (stepAgent) stepAgent.classList.add('done')
-  btn.style.display = 'none'
-
-  document.getElementById('step3-generate').innerHTML = `
-    <div id="gen-progress-wrap" style="margin-top:4px">
-      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px">
-        <span style="font-weight:600">Generating documentation…</span>
-        <span id="gen-counter" style="color:var(--text-muted)">0 / ${total}</span>
-      </div>
-      <div style="height:4px;background:var(--border);border-radius:2px;margin-bottom:14px;overflow:hidden">
-        <div id="gen-bar" style="height:100%;width:0%;background:var(--accent);border-radius:2px;transition:width .3s"></div>
-      </div>
-      <div id="gen-log" style="font-family:var(--font-mono);font-size:12px;max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:4px"></div>
-    </div>`
-
-  state.generating = true
-  state.generationTotal = total
-  state.generationDone = 0
-  state.generationLog = []
-  state.generationStartMs = Date.now()
-}
-
-function handleProgressEvent(raw) {
-  // format: "progress:done/total:status:filepath"
-  if (!raw.startsWith('progress:')) return
-  const parts = raw.slice(9).split(':')
-  const counter = parts[0]   // "3/31"
-  const status = parts[1]    // done | skip | working | error
-  const file = parts.slice(2).join(':')
-
-  const [done, total] = counter.split('/').map(Number)
-  state.generationDone = done
-
-  const icon = status === 'done' ? '✓' : status === 'skip' ? '–' : status === 'error' ? '✗' : '…'
-  const color = status === 'done' ? 'var(--green-text)' : status === 'error' ? 'var(--red-text)' : status === 'skip' ? 'var(--text-muted)' : 'var(--accent)'
-
-  // Persist completed entries so we can replay when returning to the panel
-  if (status !== 'working') state.generationLog.push({ icon, color, file })
-
-  const bar = document.getElementById('gen-bar')
-  const cnt = document.getElementById('gen-counter')
-  const log = document.getElementById('gen-log')
-
-  if (bar) bar.style.width = `${Math.round((done / total) * 100)}%`
-  if (cnt) {
-    let eta = ''
-    if (done > 2 && state.generationStartMs) {
-      const elapsed = (Date.now() - state.generationStartMs) / 1000
-      const secsPerFile = elapsed / done
-      const remaining = Math.round(secsPerFile * (total - done))
-      eta = remaining > 5 ? ` — ~${remaining}s restantes` : ''
-    }
-    cnt.textContent = `${done} / ${total}${eta}`
-  }
-  if (!log) return
-
-  const row = document.createElement('div')
-  row.style.cssText = `display:flex;gap:8px;align-items:baseline;color:${color}`
-  row.innerHTML = `<span style="flex-shrink:0;font-weight:700">${icon}</span><span style="color:var(--text-muted)">${esc(file)}</span>`
-
-  if (status === 'working') {
-    const existing = log.querySelector('[data-working]')
-    if (existing) existing.remove()
-    row.setAttribute('data-working', '1')
-  }
-  log.appendChild(row)
-  log.scrollTop = log.scrollHeight
-}
-
-function handleDoneEvent(raw) {
-  if (!raw.startsWith('done:')) return
-  state.generating = false
-  const count = raw.slice(5)
-  const log = document.getElementById('gen-log')
-  const bar = document.getElementById('gen-bar')
-  if (bar) bar.style.background = 'var(--green)'
-  const cnt = document.getElementById('gen-counter')
-  if (cnt) cnt.textContent = `${count} files documented`
-  if (log) {
-    const row = document.createElement('div')
-    row.style.cssText = 'margin-top:8px;font-weight:700;color:var(--green-text)'
-    row.textContent = `✓ Done! Documentation generated for ${count} files.`
-    log.appendChild(row)
-  }
-  // Show regenerate controls
-  const wrap = document.getElementById('gen-progress-wrap')
-  if (wrap) {
-    const lang = state.lang || 'es'
-    const otherLang = lang === 'es' ? 'en' : 'es'
-    const otherLabel = otherLang === 'es' ? '🇪🇸 Regenerate in Spanish' : '🇺🇸 Regenerate in English'
-    const div = document.createElement('div')
-    div.style.cssText = 'margin-top:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap'
-    div.innerHTML = `
-      <button onclick="setLang('${otherLang}');runGenerate(true)" style="padding:8px 16px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text);border-radius:var(--radius);font-size:13px;cursor:pointer;flex-shrink:0">
-        ${otherLabel}
-      </button>
-      <span style="font-size:12px;color:var(--text-muted)">Re-generates all docs in the selected language.</span>`
-    wrap.appendChild(div)
-  }
-}
 
 function showRegenPanel() {
   state.active = 'regen'
@@ -919,60 +764,24 @@ function showRegenPanel() {
   renderNav()
   const lang = state.lang || 'es'
   const el = document.getElementById('doc-content')
-
-  if (state.generating) {
-    const done = state.generationDone || 0
-    const total = state.generationTotal || 0
-    const pct = total > 0 ? Math.round((done / total) * 100) : 0
-    el.innerHTML = `
-      <div style="max-width:540px;margin:60px auto;padding:0 24px">
-        <h2 style="font-size:20px;font-weight:700;margin-bottom:8px">Generando documentación…</h2>
-        <p style="color:var(--text-muted);font-size:14px;margin-bottom:24px">La generación continúa en segundo plano. Puedes navegar libremente.</p>
-        <div id="step3-generate">
-          <div id="gen-progress-wrap">
-            <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px">
-              <span style="font-weight:600">Generando documentación…</span>
-              <span id="gen-counter" style="color:var(--text-muted)">${done} / ${total}</span>
-            </div>
-            <div style="height:4px;background:var(--border);border-radius:2px;margin-bottom:14px;overflow:hidden">
-              <div id="gen-bar" style="height:100%;width:${pct}%;background:var(--accent);border-radius:2px;transition:width .3s"></div>
-            </div>
-            <div id="gen-log" style="font-family:var(--font-mono);font-size:12px;max-height:320px;overflow-y:auto;display:flex;flex-direction:column;gap:4px"></div>
-          </div>
-        </div>
-      </div>`
-    // Replay saved log entries
-    const log = el.querySelector('#gen-log')
-    for (const entry of state.generationLog) {
-      const row = document.createElement('div')
-      row.style.cssText = `display:flex;gap:8px;align-items:baseline;color:${entry.color}`
-      row.innerHTML = `<span style="flex-shrink:0;font-weight:700">${entry.icon}</span><span style="color:var(--text-muted)">${esc(entry.file)}</span>`
-      log.appendChild(row)
-    }
-    log.scrollTop = log.scrollHeight
-    return
-  }
-
   el.innerHTML = `
     <div style="max-width:540px;margin:60px auto;padding:0 24px">
       <h2 style="font-size:20px;font-weight:700;margin-bottom:8px">Regenerar documentación</h2>
-      <p style="color:var(--text-muted);font-size:14px;margin-bottom:28px">Re-genera todos los docs desde los archivos fuente. Sobreescribe la documentación existente.</p>
+      <p style="color:var(--text-muted);font-size:14px;margin-bottom:28px">Dile a Claude Code que regenere todos los docs desde los archivos fuente.</p>
 
       <div style="margin-bottom:20px">
         <div style="font-size:13px;font-weight:600;margin-bottom:8px">Idioma</div>
         <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;width:fit-content">
-          <button id="lang-es" onclick="setLang('es')" style="padding:8px 20px;border:none;background:${lang==='es'?'var(--accent)':'var(--bg-secondary)'};color:${lang==='es'?'white':'var(--text-muted)'};font-size:13px;font-weight:600;cursor:pointer">🇪🇸 Español</button>
-          <button id="lang-en" onclick="setLang('en')" style="padding:8px 20px;border:none;background:${lang==='en'?'var(--accent)':'var(--bg-secondary)'};color:${lang==='en'?'white':'var(--text-muted)'};font-size:13px;cursor:pointer">🇺🇸 English</button>
+          <button id="lang-es" onclick="setLang('es')" style="padding:8px 20px;border:none;background:${lang==='es'?'var(--accent)':'var(--bg-sidebar)'};color:${lang==='es'?'white':'var(--text-muted)'};font-size:13px;font-weight:600;cursor:pointer">🇪🇸 Español</button>
+          <button id="lang-en" onclick="setLang('en')" style="padding:8px 20px;border:none;background:${lang==='en'?'var(--accent)':'var(--bg-sidebar)'};color:${lang==='en'?'white':'var(--text-muted)'};font-size:13px;cursor:pointer">🇺🇸 English</button>
         </div>
       </div>
 
-      <button class="bootstrap-btn" id="gen-btn" onclick="confirmRegen()" style="max-width:300px">
-        <span id="gen-btn-icon">✨</span>
-        <span id="gen-btn-label">Regenerar todos los docs</span>
-      </button>
-      <p style="font-size:12px;color:var(--text-muted);margin-top:10px">Usa Claude Haiku. Sobreescribe los archivos .md existentes.</p>
-
-      <div id="step3-generate" style="margin-top:16px"></div>
+      <div class="bootstrap-claude">
+        <div class="bootstrap-claude-label">Pega esto en tu sesión de Claude Code</div>
+        <div class="bootstrap-claude-cmd" data-cmd-type="regen" onclick="copyGenCmd(this)">${genCmdText('regen')}</div>
+        <p class="copy-hint">Clic para copiar · Claude leerá cada archivo y sobreescribirá los docs</p>
+      </div>
     </div>`
 }
 
@@ -981,30 +790,6 @@ function isArchTemplate(text) {
   const hasComments = /<!--\s*(Describe|describe|TODO|todo)/.test(text)
   const emptyRows = (text.match(/^\|(\s*\|){3,}\s*$/mg) || []).length
   return hasComments || emptyRows >= 3
-}
-
-async function generateArch() {
-  const btn = document.getElementById('arch-gen-btn')
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Generando…' }
-
-  try {
-    const r = await fetch('/api/generate-arch', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ lang: state.lang || 'es' }),
-    })
-    const data = await r.json()
-    if (data.error === 'no_api_key') {
-      if (btn) { btn.disabled = false; btn.textContent = '✨ Generar con IA' }
-      const banner = document.getElementById('arch-gen-banner')
-      if (banner) banner.insertAdjacentHTML('beforeend', `<span style="color:var(--red-text);font-size:12px">API key no encontrada — agrega ANTHROPIC_API_KEY al entorno.</span>`)
-      return
-    }
-    // reload will come via SSE — just update button
-    if (btn) { btn.textContent = '✓ Listo' }
-  } catch {
-    if (btn) { btn.disabled = false; btn.textContent = '✨ Generar con IA' }
-  }
 }
 
 function goHome() {
@@ -1451,8 +1236,6 @@ function renderHealthCheck(data) {
 function connectSSE() {
   const es = new EventSource('/events')
   es.onmessage = async (e) => {
-    if (e.data.startsWith('progress:')) { handleProgressEvent(e.data); return }
-    if (e.data.startsWith('done:'))     { handleDoneEvent(e.data); return }
     if (e.data !== 'reload') return
 
     await refreshTree()
@@ -1637,6 +1420,31 @@ function updatePaletteSelection() {
 function scrollPaletteItem() {
   const items = document.querySelectorAll('#palette-results .palette-item')
   items[paletteIdx]?.scrollIntoView({ block: 'nearest' })
+}
+
+// ── Claude command helpers ───────────────────────────────────────────────────
+function genCmdText(type) {
+  const lang = state.lang === 'es' ? 'en español' : 'in English'
+  if (type === 'bootstrap') return `Run the documentalista subagent to document all pending files ${lang}`
+  if (type === 'regen')     return `Regenerate all documentation ${lang} from scratch — read each source file and overwrite existing docs`
+  if (type === 'arch')      return `Fill in ARCHITECTURE.md based on the actual source code and package.json. Write it ${lang}.`
+  return ''
+}
+
+function copyGenCmd(el) {
+  navigator.clipboard.writeText(el.textContent).then(() => {
+    const orig = el.textContent
+    const origBg = el.style.background
+    const origColor = el.style.color
+    el.style.background = 'var(--green-bg)'
+    el.style.color = 'var(--green-text)'
+    el.textContent = '✓ Copiado'
+    setTimeout(() => {
+      el.style.background = origBg
+      el.style.color = origColor
+      el.textContent = orig
+    }, 1200)
+  }).catch(() => {})
 }
 
 // ── Copy code ────────────────────────────────────────────────────────────────

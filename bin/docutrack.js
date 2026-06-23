@@ -5,6 +5,7 @@
 const [, , command, ...args] = process.argv
 
 const commands = {
+  setup: () => require('../src/commands/setup'),
   init: () => require('../src/commands/init'),
   serve: () => require('../src/commands/serve'),
   analyze: () => require('../src/commands/analyze'),
@@ -22,6 +23,7 @@ if (!command || command === '--help' || command === '-h') {
 docutrack — Claude Code documentation plugin
 
 Usage:
+  docutrack setup                         One-command setup: init + scan + start viewer
   npx docutrack init                      Initialize DocuTrack in the current project
   docutrack init --template <name>        Init with a specific stack template
   docutrack serve                         Start the documentation web viewer (port 4242)

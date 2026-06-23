@@ -1,116 +1,160 @@
+<div align="center">
+
 # DocuTrack
 
-**Plugin de Claude Code que documenta automáticamente lo que construyes.**
+**Your AI agent writes code. DocuTrack makes sure it documents what it builds.**
 
-DocuTrack engancha los lifecycle hooks de Claude Code para registrar cada archivo modificado y generar documentación técnica en tiempo real — sin interrumpir tu flujo de trabajo.
+[![npm version](https://img.shields.io/npm/v/docutrack?color=6366f1&label=npm)](https://www.npmjs.com/package/docutrack)
+[![License: MIT](https://img.shields.io/badge/license-MIT-6366f1)](LICENSE)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D18-6366f1)](https://nodejs.org)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-6366f1)](CONTRIBUTING.md)
+
+</div>
 
 ---
 
-## Instalación
+## The problem
+
+Claude Code edits 30 files in a session. When it's done, none of them have updated documentation. You end up with a codebase that works but no one understands — including you, three months later.
+
+## The solution
+
+DocuTrack hooks into Claude Code's lifecycle events to automatically queue every modified file and generate technical documentation using AI — without interrupting your workflow.
 
 ```bash
 npx docutrack init
 ```
 
-Detecta tu stack automáticamente (Next.js, FastAPI, Express, Go, monorepo) y configura todo en segundos.
+That's it. From that point on, every file your AI agent touches gets documented.
 
 ---
 
-## ¿Qué hace?
+## How it works
 
-- **Hook PostToolUse** — cada vez que Claude edita un archivo, lo encola automáticamente
-- **Hook Stop** — al terminar la sesión, el subagente `documentalista` genera los docs de todo lo pendiente
-- **Visor web** — interfaz tipo Notion en `localhost:4242` con sidebar, renderizado Markdown, API Explorer interactivo y Health Check
-- **Generación con IA** — escanea proyectos existentes y genera toda la documentación con un clic desde el visor
-- **Sin dependencias** — llama a la API de Anthropic directo via `https` nativo de Node.js
+```
+Claude edits a file
+       ↓
+PostToolUse hook fires → file added to .docutrack/queue.json
+       ↓
+Session ends → documentalista subagent runs
+       ↓
+Docs written to docs/modules/ and docs/api/
+       ↓
+docutrack serve → beautiful web viewer at localhost:4242
+```
+
+DocuTrack installs two hooks in your Claude Code settings:
+
+- **PostToolUse** — fires after every file edit, queues the file
+- **Stop** — fires at end of session, triggers the documentalista subagent
 
 ---
 
-## Uso rápido
+## Web viewer
+
+Run `docutrack serve` to open a Notion-like documentation viewer at `http://localhost:4242`:
+
+- **Modules** — auto-generated docs for every source file
+- **Architecture** — AI-generated overview of your tech stack, structure, and data flow
+- **API Explorer** — interactive Swagger-like explorer built from your route files
+- **Decisions** — Architecture Decision Records (ADRs)
+- **Health Check** — drift analysis, complexity heatmap, stale doc detection
+- **Multilingual** — generates docs in Spanish or English, switchable from the UI
+
+### Bootstrapping an existing project
+
+Already have a codebase? No problem. Open the viewer and click **"✨ Regenerate docs"** — DocuTrack scans all your source files and generates documentation for everything, no terminal needed.
+
+---
+
+## Quick start
 
 ```bash
-# Inicializar en tu proyecto
+# Initialize in your project
 npx docutrack init
 
-# Abrir el visor de documentación
+# Open the documentation viewer
 docutrack serve
+# → http://localhost:4242
 
-# Escanear un proyecto existente y generar docs
-# → Usar el botón "Regenerar docs" en el visor
-
-# Ver estado de cobertura
-docutrack status
-
-# Health check completo (drift, complejidad, stale)
+# Check documentation health
 docutrack check
 ```
 
+To use AI generation, set your Anthropic API key:
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+# or add it to .env.local in your project
+```
+
 ---
 
-## Comandos
+## Commands
 
-| Comando | Descripción |
+| Command | Description |
 |---------|-------------|
-| `docutrack init` | Inicializa DocuTrack en el proyecto actual |
-| `docutrack serve` | Abre el visor web en el puerto 4242 |
-| `docutrack scan` | Encola todos los archivos fuente existentes |
-| `docutrack status` | Muestra cobertura, pendientes y docs desactualizados |
-| `docutrack check` | Health check: drift, complejidad, stale |
-| `docutrack analyze` | Detecta rutas y genera `docs/api/openapi.json` |
-| `docutrack onboard` | Genera `docs/ONBOARDING.md` |
-| `docutrack export` | Exporta a Mintlify o Docusaurus |
-| `docutrack badge` | Genera badge SVG de cobertura |
+| `docutrack init` | Initialize DocuTrack in the current project |
+| `docutrack serve` | Open the web viewer at port 4242 |
+| `docutrack scan` | Queue all existing source files for documentation |
+| `docutrack status` | Show coverage, pending files, and stale docs |
+| `docutrack check` | Full health check: drift, complexity, stale |
+| `docutrack analyze` | Auto-detect routes and generate `docs/api/openapi.json` |
+| `docutrack onboard` | Generate `docs/ONBOARDING.md` for new team members |
+| `docutrack export` | Export to Mintlify or Docusaurus format |
+| `docutrack badge` | Generate coverage badge SVG for your README |
 
 ---
 
-## Templates soportados
+## Stack templates
 
-Detección automática o manual con `--template`:
+DocuTrack auto-detects your stack from `package.json`, `go.mod`, etc. You can also specify it manually:
 
-- `nextjs` — Next.js App Router
-- `fastapi` — Python FastAPI
-- `express` — Node.js Express / Fastify
-- `monorepo` — Turborepo / pnpm workspaces
-- `go` — Go modules
+```bash
+docutrack init --template nextjs    # Next.js App Router
+docutrack init --template fastapi   # Python FastAPI
+docutrack init --template express   # Node.js Express / Fastify
+docutrack init --template monorepo  # Turborepo / pnpm workspaces
+docutrack init --template go        # Go modules
+```
+
+Each template ships with a stack-specific `documentalista` subagent that understands your framework's conventions.
 
 ---
 
-## Estructura generada
+## What gets generated
 
 ```
 docs/
-├── modules/        ← un .md por módulo/componente
-├── api/            ← docs de rutas API + openapi.json
-└── decisions/      ← Architecture Decision Records (ADRs)
-ARCHITECTURE.md     ← vista general del proyecto (auto-generada con IA)
+├── modules/          ← one .md per source file (responsibility, exports, dependencies)
+├── api/              ← one .md per API route + openapi.json
+└── decisions/        ← Architecture Decision Records
+ARCHITECTURE.md       ← AI-generated: tech stack, app structure, data flow, module map
+docs/ONBOARDING.md    ← AI-generated: setup guide, conventions, key modules
 ```
 
 ---
 
-## Visor web
+## Zero dependencies
 
-```bash
-docutrack serve
-# → http://localhost:4242
-```
-
-Incluye:
-- Sidebar con todos los módulos, decisiones y rutas API
-- **API Explorer** interactivo estilo Swagger
-- **Health Check**: drift de código vs docs, mapa de complejidad
-- **Generación desde la UI**: escanea y documenta sin abrir la terminal
-- Toggle de idioma Español / English
+DocuTrack calls the Anthropic API directly using Node.js built-in `https` — no SDK, no extra packages to install, nothing added to your `node_modules`.
 
 ---
 
-## Requisitos
+## Requirements
 
 - Node.js 18+
-- Claude Code CLI
-- `ANTHROPIC_API_KEY` en el entorno o en `.env.local` (solo para generación con IA)
+- [Claude Code](https://claude.ai/code) CLI
+- `ANTHROPIC_API_KEY` (only required for AI doc generation)
 
 ---
 
-## Licencia
+## Contributing
 
-MIT — [mnovoaq](https://github.com/mnovoaq)
+Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) to get started.
+
+---
+
+## License
+
+MIT © [novolabs](https://github.com/mnovoaq)

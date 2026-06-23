@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  test:
+    name: Test (Node ${{ matrix.node-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x, 22.x]
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Verify CLI runs
+        run: node bin/docutrack.js --help
+
+      - name: Verify version flag
+        run: node bin/docutrack.js --version
+
+      - name: Verify no missing requires
+        run: node -e "require('./src/commands/init'); require('./src/commands/serve'); require('./src/viewer/server'); require('./src/utils/queue'); require('./src/utils/stale'); require('./src/utils/drift'); require('./src/analyzer/complexity');"

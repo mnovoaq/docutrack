@@ -615,11 +615,10 @@ async function loadFile(filePath) {
   if (filePath === 'ARCHITECTURE.md' && isArchTemplate(text)) {
     const banner = document.createElement('div')
     banner.id = 'arch-gen-banner'
-    banner.style.cssText = 'position:sticky;bottom:0;background:var(--bg);border-top:1px solid var(--border);padding:14px 24px'
+    banner.style.cssText = 'position:sticky;bottom:0;background:var(--bg);border-top:1px solid var(--border);padding:12px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap'
     banner.innerHTML = `
-      <div style="font-size:13px;color:var(--text-muted);margin-bottom:8px">La arquitectura tiene contenido de plantilla. Dile a Claude Code:</div>
-      <div class="bootstrap-claude-cmd" data-cmd-type="arch" onclick="copyGenCmd(this)" style="font-size:12px">${genCmdText('arch')}</div>
-      <p class="copy-hint" style="margin-top:6px">Clic para copiar</p>`
+      <span style="font-size:13px;color:var(--text-muted);flex:1">La arquitectura tiene contenido de plantilla sin completar.</span>
+      <button id="arch-gen-btn" onclick="generateArch()" style="padding:8px 18px;background:var(--accent);color:white;border:none;border-radius:var(--radius);font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap">✨ Fill in with AI</button>`
     document.getElementById('doc-wrap').appendChild(banner)
   }
 }
@@ -729,15 +728,55 @@ async function runScan() {
         <button id="lang-es" onclick="setLang('es')" style="padding:6px 18px;border:none;background:${state.lang==='es'?'var(--accent)':'var(--bg-sidebar)'};color:${state.lang==='es'?'white':'var(--text-muted)'};font-size:13px;font-weight:600;cursor:pointer;transition:background .15s">🇪🇸 Español</button>
         <button id="lang-en" onclick="setLang('en')" style="padding:6px 18px;border:none;background:${state.lang==='en'?'var(--accent)':'var(--bg-sidebar)'};color:${state.lang==='en'?'white':'var(--text-muted)'};font-size:13px;cursor:pointer;transition:background .15s">🇺🇸 English</button>
       </div>
-      <div class="bootstrap-claude">
-        <div class="bootstrap-claude-label">Pega esto en tu sesión de Claude Code</div>
-        <div class="bootstrap-claude-cmd" data-cmd-type="bootstrap" onclick="copyGenCmd(this)">${genCmdText('bootstrap')}</div>
-        <p class="copy-hint">Clic para copiar · el agente documentará cada archivo en tiempo real</p>
-      </div>
+      <button class="bootstrap-btn" id="gen-btn" onclick="runGenerate()">
+        <span id="gen-btn-icon">✨</span>
+        <span id="gen-btn-label">Generate docs</span>
+      </button>
     </div>`
 
   // Refresh status badge
   await refreshStatus()
+}
+
+async function runGenerate(force = false) {
+  const btn = document.getElementById('gen-btn')
+  const icon = document.getElementById('gen-btn-icon')
+  const label = document.getElementById('gen-btn-label')
+  if (btn) btn.disabled = true
+  if (icon) icon.innerHTML = '<span class="spinner" style="width:16px;height:16px;border-width:2px;border-color:rgba(255,255,255,.3);border-top-color:white"></span>'
+  if (label) label.textContent = 'Preparing…'
+
+  try {
+    await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lang: state.lang || 'es', force }),
+    })
+  } catch { /* ok — trigger file not critical */ }
+
+  const langStr = state.lang === 'es' ? 'en español' : 'in English'
+  const cmd = force
+    ? `Delete all existing docs and run /documentalista to regenerate everything ${langStr}`
+    : '/documentalista'
+
+  let copied = false
+  try { await navigator.clipboard.writeText(cmd); copied = true } catch { /* blocked */ }
+
+  const wrap = document.getElementById('step3-generate')
+  if (wrap) wrap.innerHTML = `
+    <div style="text-align:center;padding:24px 0 8px">
+      <div style="font-size:36px;margin-bottom:10px">${copied ? '✓' : '📋'}</div>
+      <div style="font-size:15px;font-weight:700;margin-bottom:6px;color:var(--green-text)">${copied ? 'Copied to clipboard!' : 'Ready — copy this command'}</div>
+      <div style="font-size:13px;color:var(--text-muted);margin-bottom:20px">Switch to Claude Code and press
+        <code style="background:var(--border);padding:1px 6px;border-radius:3px;font-size:12px">Ctrl+V</code> then
+        <code style="background:var(--border);padding:1px 6px;border-radius:3px;font-size:12px">Enter</code>
+      </div>
+      <div class="bootstrap-claude">
+        <div class="bootstrap-claude-label">${copied ? 'In your clipboard' : 'Command'}</div>
+        <div class="bootstrap-claude-cmd" onclick="copyGenCmd(this)">${esc(cmd)}</div>
+        <p class="copy-hint">Click to copy again if needed</p>
+      </div>
+    </div>`
 }
 
 function setLang(lang) {
@@ -777,11 +816,11 @@ function showRegenPanel() {
         </div>
       </div>
 
-      <div class="bootstrap-claude">
-        <div class="bootstrap-claude-label">Pega esto en tu sesión de Claude Code</div>
-        <div class="bootstrap-claude-cmd" data-cmd-type="regen" onclick="copyGenCmd(this)">${genCmdText('regen')}</div>
-        <p class="copy-hint">Clic para copiar · Claude leerá cada archivo y sobreescribirá los docs</p>
-      </div>
+      <button class="bootstrap-btn" id="gen-btn" onclick="runGenerate(true)">
+        <span id="gen-btn-icon">↻</span>
+        <span id="gen-btn-label">Regenerate all docs</span>
+      </button>
+      <div id="step3-generate" style="margin-top:16px"></div>
     </div>`
 }
 
@@ -790,6 +829,35 @@ function isArchTemplate(text) {
   const hasComments = /<!--\s*(Describe|describe|TODO|todo)/.test(text)
   const emptyRows = (text.match(/^\|(\s*\|){3,}\s*$/mg) || []).length
   return hasComments || emptyRows >= 3
+}
+
+async function generateArch() {
+  const btn = document.getElementById('arch-gen-btn')
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Copying…' }
+
+  try {
+    await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lang: state.lang || 'es', type: 'arch' }),
+    })
+  } catch { /* ok */ }
+
+  const langStr = state.lang === 'es' ? 'en español' : 'in English'
+  const cmd = `Fill in ARCHITECTURE.md for this project based on the actual source code and package.json. Write it ${langStr}.`
+
+  let copied = false
+  try { await navigator.clipboard.writeText(cmd); copied = true } catch { /* ok */ }
+
+  const banner = document.getElementById('arch-gen-banner')
+  if (banner) banner.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;width:100%">
+      <span style="font-size:22px">${copied ? '✓' : '📋'}</span>
+      <div style="flex:1;min-width:180px">
+        <div style="font-size:13px;font-weight:600;color:var(--green-text);margin-bottom:6px">${copied ? 'Copied! Switch to Claude Code and press Ctrl+V → Enter' : 'Run this in Claude Code:'}</div>
+        <div class="bootstrap-claude-cmd" onclick="copyGenCmd(this)" style="font-size:12px">${esc(cmd)}</div>
+      </div>
+    </div>`
 }
 
 function goHome() {

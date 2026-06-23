@@ -39,7 +39,8 @@ class DocuTrackServer {
     if (p === '/api/openapi')    return this.serveOpenAPI(res)
     if (p === '/api/check')      return this.serveCheck(res)
     if (p === '/api/complexity') return this.serveComplexity(res)
-    if (p === '/api/scan' && req.method === 'POST')          return this.serveScan(res)
+    if (p === '/api/scan' && req.method === 'POST')           return this.serveScan(res)
+    if (p === '/api/generate' && req.method === 'POST')      return this.serveGenerate(res, req)
     if (p === '/api/search')                                 return this.serveSearch(res, reqUrl.searchParams.get('q'))
     if (p === '/events')                                     return this.serveSSE(req, res)
 
@@ -218,6 +219,20 @@ class DocuTrackServer {
       files: newFiles.slice(0, 5),
       hasMore: newFiles.length > 5,
     }))
+  }
+
+  serveGenerate(res, req) {
+    let body = ''
+    req.on('data', c => { body += c })
+    req.on('end', () => {
+      try {
+        const { lang = 'es', force = false } = JSON.parse(body || '{}')
+        const triggerPath = path.join(this.root, '.docutrack', 'generate.trigger')
+        fs.writeFileSync(triggerPath, JSON.stringify({ lang, force, requestedAt: new Date().toISOString() }))
+      } catch { /* ok */ }
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ triggered: true }))
+    })
   }
 
   moduleDocName(file) {

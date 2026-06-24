@@ -73,7 +73,8 @@ If `docDepth` is `"detailed"`, add a `## Examples` section with a usage snippet 
 
 If `audience` is `"onboarding"`, add a brief **Context** paragraph at the top explaining where this module fits in the system — assume the reader is new to the codebase.
 
-**4. Update ARCHITECTURE.md if needed**
+**4. Update `ARCHITECTURE.md` at the project root if needed**
+`ARCHITECTURE.md` lives at the **project root** (same level as `package.json`, `README.md`, etc.) — never inside `docs/`.
 - New module added → add a row to the Module Map table
 - New external service → add to the Integrations table
 - New env variable → add to the Environment Variables table

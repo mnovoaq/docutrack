@@ -152,6 +152,8 @@ DocuTrack registers two hooks globally (via `install-global`) and per-project (v
 - **PostToolUse** — fires after every Write/Edit, adds the file to `.docutrack/queue.json`
 - **Stop** — fires when the session ends; scans for any files that were missed, then prompts Claude to run the documentalista
 
+The **global Stop hook** is the authoritative implementation. It embeds the full catch-all logic with mtime tracking, so only files modified *after* the last documentation run are flagged — never already-documented files. It also self-corrects the queue if an older project hook left stale entries.
+
 The global hooks silently skip projects that haven't been initialized. No noise in other projects.
 
 ---

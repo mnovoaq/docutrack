@@ -70,7 +70,7 @@ cat .docutrack/queue.json
 - What it requires from the request (headers, tokens, etc.)
 - What it raises on failure (HTTP status codes)
 
-**6. Update ARCHITECTURE.md**:
+**6. Update `ARCHITECTURE.md` at the project root** (never inside `docs/`):
 - Add new routers to the Module Map
 - Add new dependencies to the Dependency Injection Map
 - Update Integrations if a new service was connected

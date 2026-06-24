@@ -72,7 +72,7 @@ type ServiceName interface {
 **Errors**: `404` not found, `500` internal
 ```
 
-**6. Update ARCHITECTURE.md**:
+**6. Update `ARCHITECTURE.md` at the project root** (never inside `docs/`):
 - Add new packages to the Module Map
 - Add new interfaces to the Interface Contracts table
 

@@ -1,12 +1,24 @@
 'use strict'
 
-// Stop hook — fires when the Claude Code session ends
-// 1. Catch-all: queues any source files that the PostToolUse hook missed
-//    (happens when docutrack init ran mid-session, before hooks were active)
-// 2. Reports pending files and asks Claude to run the documentalista
+// Stop hook — fires when the Claude Code session ends.
+// If the global DocuTrack hook is active, it handles all of this logic.
+// This project-level hook is a fallback for sessions without the global hook.
 
 const fs = require('fs')
 const path = require('path')
+const os = require('os')
+
+// Exit early if the global hook is installed — it runs the authoritative logic.
+try {
+  const globalSettings = path.join(os.homedir(), '.claude', 'settings.json')
+  if (fs.existsSync(globalSettings)) {
+    const s = JSON.parse(fs.readFileSync(globalSettings, 'utf8'))
+    const hasGlobal = s?.hooks?.Stop?.some(h =>
+      h.hooks?.some(c => c.command?.includes('global-on-stop'))
+    )
+    if (hasGlobal) process.exit(0)
+  }
+} catch { /* fall through and run locally */ }
 
 const QUEUE_PATH = path.join('.docutrack', 'queue.json')
 

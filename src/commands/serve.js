@@ -17,16 +17,25 @@ async function run(args) {
   // Auto-analyze on serve startup (quiet mode)
   await analyzeCmd.run(['--quiet'])
 
-  new DocuTrackServer(projectRoot, port).start()
+  const server = new DocuTrackServer(projectRoot, port).start()
+
+  // Write PID file so `docutrack stop` can kill this server cleanly
+  const pidFile = path.join('.docutrack', 'server.pid')
+  try {
+    fs.writeFileSync(pidFile, JSON.stringify({ pid: process.pid, port, startedAt: new Date().toISOString() }))
+  } catch { /* ok */ }
 
   // Open browser after a short delay
   setTimeout(() => tryOpenBrowser(`http://localhost:${port}`), 800)
 
   // Keep process alive
-  process.on('SIGINT', () => {
+  const cleanup = () => {
+    try { fs.unlinkSync(pidFile) } catch { /* ok */ }
     console.log('\n\n  DocuTrack server stopped.\n')
     process.exit(0)
-  })
+  }
+  process.on('SIGINT', cleanup)
+  process.on('SIGTERM', cleanup)
 }
 
 function parsePort(args) {

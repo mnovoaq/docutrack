@@ -49,7 +49,7 @@ cat .docutrack/queue.json
 
 **6. For model files**, document the schema shape and any hooks (beforeCreate, afterUpdate, etc.).
 
-**7. Update ARCHITECTURE.md** module map and middleware stack table when either changes.
+**7. Update `ARCHITECTURE.md` at the project root** (never inside `docs/`) — module map and middleware stack table when either changes.
 
 **8. Regenerate API Explorer**
 Always run this after documenting route or controller files:

@@ -42,7 +42,7 @@ Use this naming: `ui-button.md`, `api-auth.md`, `shared-types.md`
 - Note which consuming packages are affected
 - Create an ADR if the change is breaking or architectural
 
-**5. Update ARCHITECTURE.md**:
+**5. Update `ARCHITECTURE.md` at the project root** (never inside `docs/`):
 - Keep the Package Map current
 - Update the Dependency Graph (Mermaid) when a new dependency between packages is added
 - Update Cross-Package Contracts if a shared type or interface changes

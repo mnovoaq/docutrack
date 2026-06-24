@@ -26,8 +26,18 @@ docutrack init --lang=<es|en|…> --description="<desc>" --audience=<team|onboar
 \`\`\`
 
 **Step 3 — build the project normally.**
-Files you create will be queued automatically. When the session ends, run the
-documentalista subagent to document everything.
+Files you create will be queued automatically.
+
+⚠️ **Do NOT run \`docutrack serve\` yet. The viewer must only start after docs exist.**
+
+**Step 4 — ONLY after ALL source files are written and the build is complete:**
+1. Run the **documentalista** subagent to document all queued files and wait until it finishes
+2. Then, and only then, start the viewer:
+\`\`\`bash
+docutrack stop
+docutrack serve
+\`\`\`
+Then tell the user: "Tu documentación está lista en http://localhost:4242"
 
 If the project already has \`.docutrack/\` (already initialized), skip to Step 3.
 `
@@ -70,14 +80,18 @@ async function run() {
   const claudeMdAlreadyInstalled = fs.existsSync(GLOBAL_CLAUDE_MD) &&
     fs.readFileSync(GLOBAL_CLAUDE_MD, 'utf8').includes(MARKER)
 
-  if (!claudeMdAlreadyInstalled) {
+  if (claudeMdAlreadyInstalled) {
+    // Update in-place: replace the existing docutrack block with the current version
+    const current = fs.readFileSync(GLOBAL_CLAUDE_MD, 'utf8')
+    const updated = current.replace(/<!-- docutrack -->[\s\S]*$/, MARKER + GLOBAL_SNIPPET)
+    fs.writeFileSync(GLOBAL_CLAUDE_MD, updated)
+    console.log(`  ✓  Global instructions updated → ${GLOBAL_CLAUDE_MD}`)
+  } else {
     const existing = fs.existsSync(GLOBAL_CLAUDE_MD)
       ? fs.readFileSync(GLOBAL_CLAUDE_MD, 'utf8').trimEnd() + '\n\n---\n'
       : ''
     fs.writeFileSync(GLOBAL_CLAUDE_MD, existing + MARKER + GLOBAL_SNIPPET)
     console.log(`  ✓  Global instructions written → ${GLOBAL_CLAUDE_MD}`)
-  } else {
-    console.log(`  ✓  Global instructions already present`)
   }
 
   console.log(`

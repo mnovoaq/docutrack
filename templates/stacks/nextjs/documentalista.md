@@ -75,7 +75,7 @@ cat .docutrack/queue.json
 
 **5. For Server Actions**, note them in the module doc with their mutation target and revalidation path.
 
-**6. Update ARCHITECTURE.md**:
+**6. Update `ARCHITECTURE.md` at the project root** (never inside `docs/`):
 - Add new routes to the Module Map with their type (Server/Client/Action/API)
 - Update Server vs Client Components table if a component's type changed
 - Update Integrations if a new external service was added

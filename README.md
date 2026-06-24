@@ -7,7 +7,6 @@
 [![npm version](https://img.shields.io/npm/v/docutrack?color=6366f1&label=npm)](https://www.npmjs.com/package/docutrack)
 [![License: MIT](https://img.shields.io/badge/license-MIT-6366f1)](LICENSE)
 [![Node.js](https://img.shields.io/badge/node-%3E%3D18-6366f1)](https://nodejs.org)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-6366f1)](CONTRIBUTING.md)
 
 </div>
 
@@ -19,140 +18,64 @@ Claude Code edits 30 files in a session. When it's done, none of them have updat
 
 ## The solution
 
-DocuTrack hooks into Claude Code's lifecycle events to automatically track every modified file. When the session ends, it tells you exactly what needs documenting — and you ask Claude to do it.
+DocuTrack hooks into Claude Code's lifecycle to automatically track every file your AI agent touches. When the session ends, a specialized subagent documents everything — in your language, at your preferred depth.
+
+---
+
+## Install once, use everywhere
 
 ```bash
 npm install -g docutrack
-docutrack init
+docutrack install-global
 ```
 
-That's it. From that point on, every file your AI agent touches gets queued for documentation.
+`install-global` does two things:
+
+1. Registers global PostToolUse and Stop hooks in `~/.claude/settings.json` — active in every Claude Code session from now on
+2. Writes a `~/.claude/CLAUDE.md` snippet that teaches Claude how to set up DocuTrack for any project
+
+After this, you never think about DocuTrack again — Claude handles the rest.
 
 ---
 
-## How it works
+## How it works per project
 
-```
-Claude edits a file
-       ↓
-PostToolUse hook fires → file added to .docutrack/queue.json
-       ↓
-Session ends → Stop hook prints: "3 files need documentation"
-       ↓
-You tell Claude: "Update the docs for files in .docutrack/queue.json"
-       ↓
-Docs written to docs/modules/ and docs/api/
-       ↓
-docutrack serve → web viewer at localhost:4242
-```
+### The recommended flow — let Claude do it
 
-DocuTrack installs two hooks in your Claude Code settings:
+Open any project in Claude Code and ask:
 
-- **PostToolUse** — fires after every file edit, queues the modified file
-- **Stop** — fires at end of session, warns if there are undocumented files
+> *"Build me an inventory API and use docutrack for documentation"*
 
----
+Claude will:
+1. Ask you four quick questions in the chat (in your language)
+2. Run `docutrack init --lang=… --description="…" --audience=… --depth=…`
+3. Build your project — every file created is queued automatically via the global hooks
+4. At session end, run the documentalista subagent to write all docs
+5. Start the viewer at `http://localhost:4242`
 
-## Two flows
-
-### New project
+### The manual flow — you control the init
 
 ```bash
-npm install -g docutrack
-docutrack init              # installs hooks and templates
-# → work with Claude Code normally
-# → session ends: Stop hook shows "X files need documentation"
-# → tell Claude: "Update the docs for files in .docutrack/queue.json"
-docutrack serve             # view docs at localhost:4242
+cd my-project
+docutrack init        # interactive questionnaire in the terminal
 ```
 
-### Existing codebase
-
-```bash
-npm install -g docutrack
-docutrack init              # installs hooks and templates
-docutrack serve             # open the viewer
-# → Bootstrap panel appears automatically
-# → click "Scan project files" — queues all source files
-# → click "Generate docs with AI" — generates everything in real-time
-```
-
-The Bootstrap panel only requires `ANTHROPIC_API_KEY` to be set. No extra terminal commands.
+Then open Claude Code. It reads `CLAUDE.md`, sees pending files, and documents everything without being asked.
 
 ---
 
-## Web viewer
+## The questionnaire
 
-Run `docutrack serve` to open a documentation viewer at `http://localhost:4242`:
+Whether run interactively or via Claude, DocuTrack asks four questions before setting up:
 
-- **Modules** — auto-generated docs for every source file
-- **Architecture** — AI-generated overview of your tech stack, structure, and data flow
-- **API Explorer** — interactive Swagger-like explorer built from your route files
-- **Decisions** — Architecture Decision Records (ADRs)
-- **Health Check** — drift analysis, complexity heatmap, stale doc detection
-- **Command palette** — `Cmd/Ctrl+K` to jump to any doc or search content
-- **Multilingual** — generates docs in Spanish or English, switchable from the UI
-- **Persistent URLs** — each view has its own URL; reload lands on the same page
+| Question | Options |
+|----------|---------|
+| Documentation language | Spanish, English, or any other |
+| Project description | One sentence |
+| Who reads the docs | `team` · `onboarding` · `mixed` |
+| Documentation depth | `concise` · `standard` · `detailed` |
 
----
-
-## Quick start
-
-```bash
-# Install globally (required — lets you run docutrack from any project)
-npm install -g docutrack
-
-# Initialize in your project
-docutrack init
-
-# Set your Anthropic API key (required for AI generation)
-export ANTHROPIC_API_KEY=sk-ant-...
-# or add it to .env.local in your project root
-
-# Open the documentation viewer
-docutrack serve
-# → http://localhost:4242
-```
-
----
-
-## Commands
-
-| Command | Description |
-|---------|-------------|
-| `docutrack init` | Initialize DocuTrack in the current project |
-| `docutrack init --template <name>` | Init with a specific stack template |
-| `docutrack serve` | Open the web viewer (default port 4242) |
-| `docutrack serve --port 3333` | Open on a custom port |
-| `docutrack scan` | Queue all existing source files for documentation |
-| `docutrack scan --dry-run` | Preview what would be queued |
-| `docutrack status` | Show coverage, pending files, and stale docs |
-| `docutrack status --json` | Machine-readable output |
-| `docutrack clear` | Clear the documentation queue |
-| `docutrack check` | Full health check: drift, complexity, stale |
-| `docutrack check --json` | Machine-readable health report for CI |
-| `docutrack analyze` | Auto-detect routes and generate `docs/api/openapi.json` |
-| `docutrack onboard` | Assemble `docs/ONBOARDING.md` from your existing docs |
-| `docutrack onboard --force` | Regenerate even if it already exists |
-| `docutrack export --format mintlify` | Export to Mintlify format |
-| `docutrack export --format docusaurus` | Export to Docusaurus format |
-| `docutrack badge` | Generate a coverage badge SVG at `docs/badge.svg` |
-
----
-
-## Stack templates
-
-DocuTrack auto-detects your stack from `package.json`, `go.mod`, etc. You can also specify it manually:
-
-```bash
-docutrack init --template nextjs    # Next.js App Router
-docutrack init --template fastapi   # Python FastAPI
-docutrack init --template express   # Node.js Express / Fastify
-docutrack init --template monorepo  # Turborepo / pnpm workspaces
-docutrack init --template go        # Go modules
-```
-
-Each template ships with a stack-specific `documentalista` subagent that understands your framework's conventions.
+These preferences are saved to `docutrack.config.json` and used by every documentation run.
 
 ---
 
@@ -160,33 +83,83 @@ Each template ships with a stack-specific `documentalista` subagent that underst
 
 ```
 docs/
-├── modules/          ← one .md per source file (responsibility, exports, dependencies)
-├── api/              ← one .md per API route + openapi.json
-├── decisions/        ← Architecture Decision Records
-├── ONBOARDING.md     ← assembled from your existing docs for new team members
-└── badge.svg         ← coverage badge for your README
-ARCHITECTURE.md       ← AI-generated: tech stack, app structure, data flow, module map
+├── modules/        ← one .md per source file
+│                      responsibility · public API · dependencies · data shapes · notes
+├── api/            ← one .md per API router + openapi.json
+├── decisions/      ← Architecture Decision Records (ADRs)
+└── ONBOARDING.md   ← assembled guide for new team members
+ARCHITECTURE.md     ← tech stack · module map · data flow · env vars
 ```
 
 ---
 
-## Zero dependencies
+## The web viewer
 
-DocuTrack calls the Anthropic API directly using Node.js built-in `https` — no SDK, no extra packages added to your `node_modules`.
+`docutrack serve` opens a local documentation browser at `http://localhost:4242`:
+
+- Browse modules, API docs, decisions, and architecture in one place
+- **Live reload** — docs update in the browser the moment the documentalista finishes, no manual refresh
+- **API Explorer** — visual OpenAPI browser auto-generated from your routes (Express, FastAPI, Next.js, Go)
+- Full-text search with `Cmd/Ctrl+K`
+- Mermaid diagram rendering
+- Dark/light mode
+- Persistent URLs — reload lands on the same page
+
+---
+
+## Commands
+
+| Command | Description |
+|---------|-------------|
+| `docutrack install-global` | **One-time setup** — registers global hooks and Claude instructions |
+| `docutrack init` | Initialize DocuTrack in a project (interactive questionnaire) |
+| `docutrack init --lang=es --description="…" --audience=team --depth=standard` | Non-interactive init (used by Claude Code) |
+| `docutrack init --template <name>` | Init with a specific stack template |
+| `docutrack serve` | Open the web viewer at `http://localhost:4242` |
+| `docutrack stop` | Stop the running viewer server |
+| `docutrack scan` | Queue all existing source files for documentation |
+| `docutrack scan --dry-run` | Preview what would be queued |
+| `docutrack status` | Show coverage, pending files, and stale docs |
+| `docutrack status --json` | Machine-readable output for CI |
+| `docutrack clear` | Clear the documentation queue |
+| `docutrack check` | Full health check: drift, complexity, stale docs |
+| `docutrack analyze` | Scan routes and generate `docs/api/openapi.json` |
+| `docutrack onboard` | Generate `docs/ONBOARDING.md` |
+| `docutrack badge` | Generate a coverage badge SVG |
+| `docutrack export --format mintlify` | Export docs to Mintlify format |
+| `docutrack export --format docusaurus` | Export docs to Docusaurus format |
+
+---
+
+## Stack templates
+
+DocuTrack auto-detects your stack from `package.json`, `go.mod`, etc.
+
+```bash
+docutrack init --template nextjs     # Next.js App Router
+docutrack init --template fastapi    # Python FastAPI
+docutrack init --template express    # Node.js Express / Fastify / Koa
+docutrack init --template monorepo   # Turborepo / pnpm workspaces
+docutrack init --template go         # Go modules
+```
+
+---
+
+## How the hooks work
+
+DocuTrack registers two hooks globally (via `install-global`) and per-project (via `init`):
+
+- **PostToolUse** — fires after every Write/Edit, adds the file to `.docutrack/queue.json`
+- **Stop** — fires when the session ends; scans for any files that were missed, then prompts Claude to run the documentalista
+
+The global hooks silently skip projects that haven't been initialized. No noise in other projects.
 
 ---
 
 ## Requirements
 
 - Node.js 18+
-- [Claude Code](https://claude.ai/code) CLI
-- `ANTHROPIC_API_KEY` (only required for AI doc generation)
-
----
-
-## Contributing
-
-Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) to get started.
+- [Claude Code](https://claude.ai/code)
 
 ---
 

@@ -4,11 +4,16 @@ const path = require('path')
 
 const HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head']
 
-// @app.get('/path') or @router.post('/path') or @app_v2.delete('/path/{id}')
-const DECORATOR_RE = /@\w+\.(get|post|put|patch|delete|options|head)\s*\(\s*["'](\/[^"']+)["']/gi
+// @app.get('/path', ...) or @router.post('/path', ...) — captures method, path, and the full decorator args
+const DECORATOR_RE = /@(\w+)\.(get|post|put|patch|delete|options|head)\s*\(([^)]*(?:\)[^)]*)*?)\)/gi
 
 // async def function_name — to infer operation name
 const DEF_RE = /(?:async\s+)?def\s+(\w+)\s*\(/g
+
+function extractSummary(decoratorArgs) {
+  const m = decoratorArgs.match(/summary\s*=\s*["']([^"']+)["']/)
+  return m ? m[1] : ''
+}
 
 function parse(filePath, content) {
   const tag = inferTag(filePath)
@@ -24,8 +29,12 @@ function parse(filePath, content) {
   let m
   const re = new RegExp(DECORATOR_RE.source, 'gi')
   while ((m = re.exec(content)) !== null) {
-    const method = m[1].toUpperCase()
-    const opPath = m[2] // FastAPI already uses {param} syntax
+    const method = m[2].toUpperCase()
+    // First argument is the path — extract it from the full args string
+    const argsStr = m[3]
+    const pathMatch = argsStr.match(/^\s*["'](\/[^"']*)["']/)
+    if (!pathMatch) continue
+    const opPath = pathMatch[1]
 
     const key = `${method}:${opPath}`
     if (seen.has(key)) continue
@@ -34,13 +43,14 @@ function parse(filePath, content) {
     // Find the function that follows this decorator
     const nearestFn = functions.find(f => f.index > m.index)
     const operationId = nearestFn?.name || toOperationId(method, opPath)
+    const summary = extractSummary(argsStr)
 
     const params = extractPathParams(opPath)
     const route = {
       method,
       path: opPath,
       tag,
-      summary: '',
+      summary,
       operationId,
       parameters: params.map(p => ({
         name: p,

@@ -7,7 +7,7 @@ const { write: writeQueue, read: readQueue } = require('../utils/queue')
 const { isPortInUse, startServerDaemon, isServerRunning } = require('../utils/daemon')
 
 const PORT = 4242
-const SOURCE_DIRS = ['src', 'lib', 'app', 'pkg', 'internal', 'api', 'routes', 'controllers', 'handlers']
+const SOURCE_DIRS = ['src', 'lib', 'app', 'pkg', 'internal', 'api', 'routes', 'controllers', 'handlers', 'packages']
 const SOURCE_EXTS = new Set(['.js', '.ts', '.mjs', '.jsx', '.tsx', '.py', '.go'])
 const IGNORE_DIRS = new Set(['node_modules', '.next', '.git', 'dist', 'build', '__pycache__', '.docutrack', 'docs', '.worktrees', 'coverage', '.turbo'])
 const IGNORE_RE = [/\.test\.[jt]sx?$/, /\.spec\.[jt]sx?$/, /\.d\.ts$/, /\.min\.js$/]
@@ -58,7 +58,7 @@ async function run(args) {
   if (!fs.existsSync(path.join(cwd, '.docutrack'))) {
     step('⚙', 'Initializing DocuTrack...')
     console.log('')
-    await require('./init').run(args)
+    await require('./init').run([...(args || []), '--no-serve'])
     console.log('\n  ' + '─'.repeat(40))
   } else {
     step('✓', 'DocuTrack already initialized')

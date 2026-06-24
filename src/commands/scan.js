@@ -4,7 +4,7 @@ const fs = require('fs')
 const path = require('path')
 const { write: writeQueue, read: readQueue } = require('../utils/queue')
 
-const SOURCE_DIRS = ['src', 'lib', 'app', 'pkg', 'internal', 'api', 'routes', 'controllers', 'handlers']
+const SOURCE_DIRS = ['src', 'lib', 'app', 'pkg', 'internal', 'api', 'routes', 'controllers', 'handlers', 'packages']
 const SOURCE_EXTS = new Set(['.js', '.ts', '.mjs', '.jsx', '.tsx', '.py', '.go'])
 const IGNORE_DIRS = new Set(['node_modules', '.next', '.git', 'dist', 'build', '__pycache__', '.docutrack', 'docs', '.worktrees', 'coverage', '.turbo'])
 const IGNORE_PATTERNS = [/\.test\.[jt]sx?$/, /\.spec\.[jt]sx?$/, /\.d\.ts$/, /\.min\.js$/]
@@ -24,24 +24,12 @@ async function run(args) {
   const existing = readQueue(root)
   const alreadyQueued = new Set(existing.pending.map(e => e.file))
 
-  // Find all source files
+  // Find all source files — walk from root to handle any project structure
   const files = []
-  for (const dir of SOURCE_DIRS) {
-    const full = path.join(root, dir)
-    if (fs.existsSync(full)) walk(full, files, root)
-  }
-
-  // Also scan root-level source files (index.js, server.js, main.go, etc.)
-  for (const entry of fs.readdirSync(root, { withFileTypes: true })) {
-    if (entry.isFile() && SOURCE_EXTS.has(path.extname(entry.name))) {
-      const rel = entry.name
-      if (!IGNORE_PATTERNS.some(re => re.test(rel))) files.push(rel)
-    }
-  }
+  walk(root, files, root)
 
   if (files.length === 0) {
     console.log('  No source files found to scan.\n')
-    console.log('  Checked: ' + SOURCE_DIRS.join(', ') + '\n')
     return
   }
 

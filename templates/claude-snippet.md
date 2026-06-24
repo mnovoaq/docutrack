@@ -11,7 +11,16 @@ node -e "const fs=require('fs');if(!fs.existsSync('.docutrack')){console.log('NE
 ```
 
 Based on the output:
-- **`NEEDS_SETUP`** → run `docutrack setup` to initialize DocuTrack for this project
+- **`NEEDS_SETUP`** → ask the user these questions (in the conversation), then run `docutrack init` with the answers as flags:
+  1. *"Documentation language? (e.g. Spanish, English, Portuguese…)"*
+  2. *"Describe this project in one sentence"*
+  3. *"Who reads the docs? → `team` (technical) / `onboarding` (new devs) / `mixed`"*
+  4. *"Documentation depth? → `concise` / `standard` / `detailed`"*
+
+  Then run:
+  ```bash
+  docutrack init --lang=<es|en|…> --description="<desc>" --audience=<team|onboarding|mixed> --depth=<concise|standard|detailed>
+  ```
 - **`PENDING:N`** (N > 0) → run the **documentalista** subagent to process the queue
 - **`PENDING:0`** → documentation is up to date ✓
 

@@ -1,6 +1,6 @@
 {
   "name": "docutrack",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "Claude Code plugin — your AI agent writes code, DocuTrack documents it automatically.",
   "keywords": [
     "claude-code",

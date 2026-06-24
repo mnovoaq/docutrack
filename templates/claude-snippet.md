@@ -4,13 +4,30 @@ This project uses DocuTrack for living documentation.
 
 ### At the start of every session
 
-Run this check silently (no output to user needed):
+**Step 1 — Check if DocuTrack is installed on this machine:**
+
+```bash
+node -e "const fs=require('fs'),os=require('os'),path=require('path');try{const s=JSON.parse(fs.readFileSync(path.join(os.homedir(),'.claude','settings.json'),'utf8'));const ok=s?.hooks?.PostToolUse?.some(h=>h.hooks?.some(c=>c.command?.includes('docutrack')));console.log(ok?'HOOKS_OK':'HOOKS_MISSING')}catch{console.log('HOOKS_MISSING')}"
+```
+
+- **`HOOKS_MISSING`** → tell the user:
+  > "DocuTrack no está instalado en tu máquina. Corre estos dos comandos en la terminal antes de continuar:
+  > ```
+  > npm install -g docutrack
+  > docutrack install-global
+  > ```
+  > Después reinicia Claude Code y vuelve a abrir este proyecto."
+
+  Do not proceed until the user confirms installation.
+
+- **`HOOKS_OK`** → continue to Step 2.
+
+**Step 2 — Check documentation status:**
 
 ```bash
 node -e "const fs=require('fs');if(!fs.existsSync('.docutrack')){console.log('NEEDS_SETUP')}else{try{const q=JSON.parse(fs.readFileSync('.docutrack/queue.json','utf8'));console.log('PENDING:'+(q.pending||[]).length)}catch{console.log('PENDING:0')}}"
 ```
 
-Based on the output:
 - **`NEEDS_SETUP`** → ask the user these questions (in the conversation), then run `docutrack init` with the answers as flags:
   1. *"Documentation language? (e.g. Spanish, English, Portuguese…)"*
   2. *"Describe this project in one sentence"*

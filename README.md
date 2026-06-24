@@ -38,6 +38,25 @@ After this, you never think about DocuTrack again — Claude handles the rest.
 
 ---
 
+## Joining a team that already uses DocuTrack
+
+If you cloned a repo that already has a `.docutrack/` folder and `docs/`, DocuTrack is already set up for that project. You just need to activate it on your machine:
+
+```bash
+npm install -g docutrack
+docutrack install-global
+```
+
+That's it. From this point on, every Claude Code session on your machine has the hooks active. You don't need to run `docutrack init` again — the project configuration is already committed to the repo.
+
+**What happens next:**
+- Open the project in Claude Code as normal
+- Claude will check for pending files at the start of each session
+- When you modify code, files are queued automatically
+- At session end, Claude will prompt you to run the documentalista if anything is pending
+
+---
+
 ## How it works per project
 
 ### The recommended flow — let Claude do it

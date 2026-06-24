@@ -511,10 +511,14 @@ async function refreshTree() {
   if (!tree) return
   state.tree = tree
 
-  // Project name from package.json
+  // Project name — works for Node, Python, Go
   try {
-    const r = await fetch('/api/content?path=package.json')
-    if (r.ok) { const j = JSON.parse(await r.text()); if (j.name) { document.getElementById('project-name').textContent = j.name; document.title = `DocuTrack — ${j.name}` } }
+    const r = await fetch('/api/project')
+    if (r.ok) {
+      const p = await r.json()
+      if (p.name) { document.getElementById('project-name').textContent = p.name; document.title = `DocuTrack — ${p.name}` }
+      if (p.lang) state.lang = p.lang
+    }
   } catch { /* ok */ }
 
   renderNav()
@@ -844,7 +848,7 @@ async function generateArch() {
   } catch { /* ok */ }
 
   const langStr = state.lang === 'es' ? 'en español' : 'in English'
-  const cmd = `Fill in ARCHITECTURE.md for this project based on the actual source code and package.json. Write it ${langStr}.`
+  const cmd = `Fill in ARCHITECTURE.md for this project based on the actual source code. Write it ${langStr}.`
 
   let copied = false
   try { await navigator.clipboard.writeText(cmd); copied = true } catch { /* ok */ }
@@ -1495,7 +1499,7 @@ function genCmdText(type) {
   const lang = state.lang === 'es' ? 'en español' : 'in English'
   if (type === 'bootstrap') return `Run the documentalista subagent to document all pending files ${lang}`
   if (type === 'regen')     return `Regenerate all documentation ${lang} from scratch — read each source file and overwrite existing docs`
-  if (type === 'arch')      return `Fill in ARCHITECTURE.md based on the actual source code and package.json. Write it ${lang}.`
+  if (type === 'arch')      return `Fill in ARCHITECTURE.md based on the actual source code. Write it ${lang}.`
   return ''
 }
 

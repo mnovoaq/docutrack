@@ -75,7 +75,13 @@ cat .docutrack/queue.json
 - Add new dependencies to the Dependency Injection Map
 - Update Integrations if a new service was connected
 
-**7. Clear the queue**
+**7. Regenerate API Explorer**
+Always run this after documenting routers or models — keeps the API Explorer in sync:
+```bash
+npx docutrack analyze
+```
+
+**8. Clear the queue**
 ```bash
 npx docutrack clear
 ```

@@ -47,7 +47,13 @@ Use this naming: `ui-button.md`, `api-auth.md`, `shared-types.md`
 - Update the Dependency Graph (Mermaid) when a new dependency between packages is added
 - Update Cross-Package Contracts if a shared type or interface changes
 
-**6. Clear the queue**
+**6. Regenerate API Explorer**
+Run this after documenting any API or route files:
+```bash
+npx docutrack analyze
+```
+
+**7. Clear the queue**
 ```bash
 npx docutrack clear
 ```

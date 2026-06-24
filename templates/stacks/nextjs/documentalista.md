@@ -80,7 +80,13 @@ cat .docutrack/queue.json
 - Update Server vs Client Components table if a component's type changed
 - Update Integrations if a new external service was added
 
-**7. Clear the queue**
+**7. Regenerate API Explorer**
+Always run this after documenting any API route files:
+```bash
+npx docutrack analyze
+```
+
+**8. Clear the queue**
 ```bash
 npx docutrack clear
 ```

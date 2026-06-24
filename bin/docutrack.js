@@ -5,6 +5,8 @@
 const [, , command, ...args] = process.argv
 
 const commands = {
+  'install-global': () => require('../src/commands/install-global'),
+  stop: () => require('../src/commands/stop'),
   setup: () => require('../src/commands/setup'),
   init: () => require('../src/commands/init'),
   serve: () => require('../src/commands/serve'),
@@ -23,8 +25,11 @@ if (!command || command === '--help' || command === '-h') {
 docutrack — Claude Code documentation plugin
 
 Usage:
+  docutrack install-global                Install hooks globally — run once after npm install
   docutrack setup                         One-command setup: init + scan + start viewer
-  npx docutrack init                      Initialize DocuTrack in the current project
+  docutrack init                          Initialize DocuTrack (runs interactive questionnaire)
+  docutrack init --lang=es --description="<desc>" --audience=team --depth=standard
+                                          Non-interactive init (for Claude Code or CI)
   docutrack init --template <name>        Init with a specific stack template
   docutrack serve                         Start the documentation web viewer (port 4242)
   docutrack analyze                       Scan routes and generate docs/api/openapi.json

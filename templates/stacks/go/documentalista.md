@@ -76,7 +76,13 @@ type ServiceName interface {
 - Add new packages to the Module Map
 - Add new interfaces to the Interface Contracts table
 
-**7. Clear the queue**
+**7. Regenerate API Explorer**
+Always run this after documenting handler files:
+```bash
+npx docutrack analyze
+```
+
+**8. Clear the queue**
 ```bash
 npx docutrack clear
 ```

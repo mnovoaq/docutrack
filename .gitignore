@@ -1,5 +1,11 @@
+node_modules/
+*.log
 
 # AgentMesh
 CLAUDE.md
 .mcp.json
 .worktrees/
+
+# Session scratch files
+context.md
+error.md

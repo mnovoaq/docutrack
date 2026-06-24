@@ -34,6 +34,7 @@ class DocuTrackServer {
 
     if (p === '/' || p === '/index.html') return this.serveShell(res)
     if (p === '/api/tree')       return this.serveTree(res)
+    if (p === '/api/project')    return this.serveProject(res)
     if (p === '/api/content')    return this.serveContent(res, reqUrl.searchParams.get('path'))
     if (p === '/api/status')     return this.serveStatus(res)
     if (p === '/api/openapi')    return this.serveOpenAPI(res)
@@ -57,6 +58,48 @@ class DocuTrackServer {
   serveTree(res) {
     res.writeHead(200, { 'Content-Type': 'application/json' })
     res.end(JSON.stringify(this.buildTree()))
+  }
+
+  serveProject(res) {
+    let name = path.basename(this.root)
+    let version = null
+    let lang = 'en'
+
+    // Node/JS — package.json
+    try {
+      const pkg = JSON.parse(fs.readFileSync(path.join(this.root, 'package.json'), 'utf8'))
+      if (pkg.name) name = pkg.name
+      if (pkg.version) version = pkg.version
+    } catch { /* not a Node project */ }
+
+    // Python — pyproject.toml
+    if (name === path.basename(this.root)) {
+      try {
+        const toml = fs.readFileSync(path.join(this.root, 'pyproject.toml'), 'utf8')
+        const m = toml.match(/^\s*name\s*=\s*["']([^"']+)["']/m)
+        if (m) name = m[1]
+        const v = toml.match(/^\s*version\s*=\s*["']([^"']+)["']/m)
+        if (v) version = v[1]
+      } catch { /* ok */ }
+    }
+
+    // Go — go.mod
+    if (name === path.basename(this.root)) {
+      try {
+        const mod = fs.readFileSync(path.join(this.root, 'go.mod'), 'utf8')
+        const m = mod.match(/^module\s+(\S+)/m)
+        if (m) name = m[1].split('/').pop()
+      } catch { /* ok */ }
+    }
+
+    // docutrack.config.json lang
+    try {
+      const cfg = JSON.parse(fs.readFileSync(path.join(this.root, 'docutrack.config.json'), 'utf8'))
+      if (cfg.lang) lang = cfg.lang
+    } catch { /* ok */ }
+
+    res.writeHead(200, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify({ name, version, lang }))
   }
 
   serveContent(res, filePath) {
@@ -165,7 +208,7 @@ class DocuTrackServer {
   }
 
   serveScan(res) {
-    const SOURCE_DIRS = ['src', 'lib', 'app', 'pkg', 'internal', 'api', 'routes', 'controllers', 'handlers']
+    const SOURCE_DIRS = ['src', 'lib', 'app', 'pkg', 'internal', 'api', 'routes', 'controllers', 'handlers', 'packages']
     const SOURCE_EXTS = new Set(['.js', '.ts', '.mjs', '.jsx', '.tsx', '.py', '.go'])
     const IGNORE_DIRS = new Set(['node_modules', '.next', '.git', 'dist', 'build', '__pycache__', '.docutrack', 'docs', '.worktrees', 'coverage', '.turbo'])
     const IGNORE_RE = [/\.test\.[jt]sx?$/, /\.spec\.[jt]sx?$/, /\.d\.ts$/, /\.min\.js$/]
@@ -367,15 +410,24 @@ class DocuTrackServer {
     }
     const reload = debounce(() => this.broadcast('reload'), 300)
 
-    const targets = [
-      path.join(this.root, 'docs'),
-      path.join(this.root, 'ARCHITECTURE.md'),
-      path.join(this.root, '.docutrack', 'queue.json'),
-    ]
-    for (const t of targets) {
-      if (fs.existsSync(t)) {
-        try { fs.watch(t, { recursive: true }, reload) } catch { /* ignore */ }
-      }
+    const tryWatch = (p, recursive = false) => {
+      if (!fs.existsSync(p)) return false
+      try { fs.watch(p, { recursive }, reload); return true } catch { return false }
+    }
+
+    // .docutrack/ always exists; watch the whole dir (queue, config changes)
+    tryWatch(path.join(this.root, '.docutrack'), true)
+    tryWatch(path.join(this.root, 'ARCHITECTURE.md'))
+
+    // docs/ may not exist yet — try now, then retry until it appears (max 60s)
+    if (!tryWatch(path.join(this.root, 'docs'), true)) {
+      let attempts = 0
+      const poll = setInterval(() => {
+        attempts++
+        if (tryWatch(path.join(this.root, 'docs'), true) || attempts >= 12) {
+          clearInterval(poll)
+        }
+      }, 5000)
     }
   }
 }

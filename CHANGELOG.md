@@ -6,6 +6,19 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.1.6] — 2026-06-23
+
+### Changed
+- **`docutrack init` is now the one command that does everything**: init + auto-detect stack + scan existing files + start viewer daemon + open browser — no questions asked
+- **Auto-writes to CLAUDE.md**: the DocuTrack snippet is injected automatically (creates CLAUDE.md if needed, appends to existing)
+- After init, opening Claude Code is sufficient — it reads CLAUDE.md, checks the queue, and runs the documentalista automatically
+- `docutrack init` called on an already-initialized project now just restarts the server and opens the browser
+- `docutrack setup` preserved for CI/interactive use (passes `--no-serve` to init, keeps y/n prompt)
+- Added `packages` to `SOURCE_DIRS` across init, scan, and server — monorepos now fully supported
+- Bump to v0.1.6
+
+---
+
 ## [0.1.5] — 2026-06-23
 
 ### Added

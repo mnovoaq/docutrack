@@ -15,7 +15,12 @@ const JS_ROUTE_DIRS = [
   'routers', 'src/routers',
 ]
 
-const PY_ROUTE_DIRS = ['routers', 'app/routers', 'api', 'app/api', 'routes', 'app/routes']
+const PY_ROUTE_DIRS = [
+  'routers', 'app/routers',
+  'api', 'app/api',
+  'routes', 'app/routes',
+  'src', 'src/routers', 'src/api', 'src/routes',
+]
 const GO_ROUTE_DIRS = ['internal/handlers', 'handlers', 'api', 'cmd']
 
 function detectFramework(root) {
@@ -23,10 +28,18 @@ function detectFramework(root) {
   const isPython = fs.existsSync(path.join(root, 'requirements.txt'))
     || fs.existsSync(path.join(root, 'pyproject.toml'))
     || fs.existsSync(path.join(root, 'setup.py'))
+    || fs.existsSync(path.join(root, 'Pipfile'))
+    || ['main.py', 'app.py', 'server.py', 'asgi.py', 'wsgi.py'].some(f => fs.existsSync(path.join(root, f)))
   if (isPython) {
-    const isFastAPI = checkFileContent(root, ['requirements.txt', 'pyproject.toml', 'Pipfile'], 'fastapi')
+    const isFastAPI = checkFileContent(root, ['requirements.txt', 'pyproject.toml', 'Pipfile', 'main.py', 'app.py', 'server.py'], 'fastapi')
     const framework = isFastAPI ? 'fastapi' : 'python'
-    return { framework, name: path.basename(root), version: '0.0.0', routeFiles: findFiles(root, PY_ROUTE_DIRS, PY_EXTS), lang: 'python' }
+    const routeFiles = findFiles(root, PY_ROUTE_DIRS, PY_EXTS)
+    // Also include root-level entry files common in FastAPI projects
+    for (const candidate of ['main.py', 'app.py', 'server.py', 'asgi.py']) {
+      const full = path.join(root, candidate)
+      if (fs.existsSync(full) && !routeFiles.includes(full)) routeFiles.push(full)
+    }
+    return { framework, name: path.basename(root), version: '0.0.0', routeFiles, lang: 'python' }
   }
 
   // Go project?

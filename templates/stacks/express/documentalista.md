@@ -51,7 +51,13 @@ cat .docutrack/queue.json
 
 **7. Update ARCHITECTURE.md** module map and middleware stack table when either changes.
 
-**8. Clear the queue**
+**8. Regenerate API Explorer**
+Always run this after documenting route or controller files:
+```bash
+npx docutrack analyze
+```
+
+**9. Clear the queue**
 ```bash
 npx docutrack clear
 ```

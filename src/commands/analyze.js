@@ -23,7 +23,7 @@ async function run(args) {
 
   if (!quiet) {
     console.log(`  Project      : ${spec.info.title}`)
-    console.log(`  Framework    : ${spec.info.description.match(/Framework detected: (.+)\./)?.[1] || 'unknown'}`)
+    console.log(`  Framework    : ${spec.info.description.match(/Framework: (.+)\./)?.[1] || 'unknown'}`)
     console.log(`  Endpoints    : ${endpointCount}`)
     console.log(`  Output       : ${OUT_PATH}\n`)
   }

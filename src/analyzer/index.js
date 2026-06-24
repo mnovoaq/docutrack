@@ -5,10 +5,11 @@ const path = require('path')
 const { detectFramework } = require('./detect')
 const expressParser = require('./parsers/express')
 const fastapiParser = require('./parsers/fastapi')
+const nestjsParser = require('./parsers/nestjs')
 
 function getParser(framework) {
   if (framework === 'fastapi' || framework === 'python') return fastapiParser
-  // Express, Fastify, Koa, Next.js, Go, generic — all use JS-style regex for now
+  if (framework === 'nestjs') return nestjsParser
   return expressParser
 }
 

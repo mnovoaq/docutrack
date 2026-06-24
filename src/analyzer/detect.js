@@ -15,6 +15,9 @@ const JS_ROUTE_DIRS = [
   'routers', 'src/routers',
 ]
 
+// Subdirectories that may contain a self-contained backend app (monorepo-lite pattern)
+const BACKEND_SUBDIRS = ['backend', 'server', 'api', 'service', 'app']
+
 const PY_ROUTE_DIRS = [
   'routers', 'app/routers',
   'api', 'app/api',
@@ -49,9 +52,24 @@ function detectFramework(root) {
     return { framework: 'go', name: modMatch?.[1]?.split('/').pop() || path.basename(root), version: '0.0.0', routeFiles: findFiles(root, GO_ROUTE_DIRS, GO_EXTS), lang: 'go' }
   }
 
-  // Node.js project
+  // Node.js project — check root first, then common backend subdirs
   let pkg = {}
+  let pkgRoot = root
   try { pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')) } catch { /* ok */ }
+
+  // If no recognizable framework found at root, probe backend subdirectories
+  if (!pkg.name && !pkg.dependencies) {
+    for (const sub of BACKEND_SUBDIRS) {
+      const subPkg = path.join(root, sub, 'package.json')
+      if (fs.existsSync(subPkg)) {
+        try {
+          pkg = JSON.parse(fs.readFileSync(subPkg, 'utf8'))
+          pkgRoot = path.join(root, sub)
+          break
+        } catch { /* ok */ }
+      }
+    }
+  }
 
   const deps = { ...pkg.dependencies, ...pkg.devDependencies, ...pkg.peerDependencies }
   const name = pkg.name || path.basename(root)
@@ -59,7 +77,13 @@ function detectFramework(root) {
 
   // Next.js — detect API routes in app/ or pages/api/
   if (deps.next) {
-    return { framework: 'nextjs', name, version, routeFiles: findNextJsRoutes(root), lang: 'js' }
+    return { framework: 'nextjs', name, version, routeFiles: findNextJsRoutes(pkgRoot), lang: 'js' }
+  }
+
+  // NestJS — scan for *.controller.ts files
+  if (deps['@nestjs/core'] || deps['@nestjs/common']) {
+    const routeFiles = findNestJsControllers(pkgRoot)
+    return { framework: 'nestjs', name, version, routeFiles, lang: 'ts' }
   }
 
   let framework = 'generic'
@@ -68,10 +92,9 @@ function detectFramework(root) {
   else if (deps.koa || deps['koa-router']) framework = 'koa'
   else if (deps.hapi || deps['@hapi/hapi']) framework = 'hapi'
 
-  const routeFiles = findFiles(root, JS_ROUTE_DIRS, JS_EXTS)
+  const routeFiles = findFiles(pkgRoot, JS_ROUTE_DIRS, JS_EXTS)
   if (routeFiles.length === 0) {
-    // Shallow scan src/
-    const srcDir = path.join(root, 'src')
+    const srcDir = path.join(pkgRoot, 'src')
     if (fs.existsSync(srcDir)) walkFiles(srcDir, routeFiles, JS_EXTS, 2)
   }
 
@@ -123,6 +146,14 @@ function walkFilesWhere(dir, acc, exts, predicate, maxDepth = 10, depth = 0) {
       acc.push(full)
     }
   }
+}
+
+function findNestJsControllers(root) {
+  const files = []
+  const srcDir = path.join(root, 'src')
+  const searchRoot = fs.existsSync(srcDir) ? srcDir : root
+  walkFilesWhere(searchRoot, files, ['.ts'], f => /\.controller\.ts$/.test(f))
+  return files
 }
 
 function checkFileContent(root, files, keyword) {
